@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply min-h-screen bg-navy-950 text-slate-100;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply rounded-2xl border border-white/10 bg-white/[0.06] shadow-glass backdrop-blur-xl;
+  }
+  .glass-input {
+    @apply w-full rounded-xl border border-white/10 bg-navy-900/80 px-4 py-3 pl-11 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-teal-400/50 focus:ring-2 focus:ring-teal-500/20;
+  }
+  .mesh-bg {
+    background-color: #050810;
+    background-image: radial-gradient(
+        ellipse 100% 80% at 50% -30%,
+        rgba(45, 212, 191, 0.12),
+        transparent 55%
+      ),
+      radial-gradient(ellipse 50% 40% at 90% 20%, rgba(168, 85, 247, 0.1), transparent 50%),
+      radial-gradient(ellipse 40% 35% at 10% 60%, rgba(56, 189, 248, 0.08), transparent 45%),
+      linear-gradient(180deg, rgba(13, 18, 36, 0.9) 0%, #050810 100%);
+  }
+  .network-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg stroke='%23ffffff' stroke-opacity='0.04'%3E%3Cpath d='M0 30h60M30 0v60'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+}

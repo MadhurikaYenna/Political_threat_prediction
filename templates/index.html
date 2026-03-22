@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Political Threat Prediction</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e7ecf3;
+      --muted: #8b9bb4;
+      --accent: #3d8bfd;
+      --ok: #2ecc71;
+      --warn: #f1c40f;
+      --bad: #e74c3c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.25rem; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem; }
+    textarea, input[type="url"] {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid #2c3a50;
+      background: #111822;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    textarea { min-height: 140px; resize: vertical; }
+    .row { display: grid; gap: 1rem; margin-bottom: 1rem; }
+    @media (min-width: 640px) { .row.two { grid-template-columns: 1fr 1fr; } }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.65rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .err {
+      background: rgba(231, 76, 60, 0.15);
+      border: 1px solid var(--bad);
+      color: #ffb4a8;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      display: none;
+    }
+    .err.show { display: block; }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin: 1rem 0 1.25rem;
+    }
+    .flow span { background: var(--panel); padding: 0.25rem 0.5rem; border-radius: 6px; }
+    .grid {
+      display: grid;
+      gap: 1rem;
+    }
+    @media (min-width: 720px) {
+      .grid.charts { grid-template-columns: 1fr 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 1rem;
+      border: 1px solid #2c3a50;
+    }
+    .card h2 { font-size: 0.95rem; margin: 0 0 0.75rem; color: var(--muted); font-weight: 600; }
+    .threat-pill {
+      display: inline-block;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .threat-pill.no { background: rgba(46, 204, 113, 0.2); color: var(--ok); }
+    .threat-pill.potential { background: rgba(241, 196, 15, 0.2); color: var(--warn); }
+    .threat-pill.high { background: rgba(231, 76, 60, 0.25); color: #ff8a80; }
+    .models { list-style: none; padding: 0; margin: 0; }
+    .models li {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #2c3a50;
+      font-size: 0.9rem;
+    }
+    .models li:last-child { border-bottom: none; }
+    pre.preview {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.8rem;
+      color: var(--muted);
+      max-height: 120px;
+      overflow: auto;
+      margin: 0;
+    }
+    #results { display: none; margin-top: 1.5rem; }
+    #results.show { display: block; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Political threat pipeline</h1>
+    <p class="sub">
+      Paste news or social text, or optionally fetch from a public <strong>http(s)</strong> URL.
+      Flow: preprocessing → lexicon emotions → VADER sentiment → TF-IDF → DT / NB / SVM → threat.
+    </p>
+    <div class="flow">
+      <span>User input</span>→<span>Preprocess</span>→<span>Emotion (lexicon)</span>→
+      <span>Sentiment</span>→<span>TF-IDF</span>→<span>ML</span>→<span>Threat</span>→<span>Charts</span>
+    </div>
+
+    <form id="f">
+      <div class="row">
+        <div>
+          <label for="text">Text (news / social content)</label>
+          <textarea id="text" name="text" placeholder="Paste content here…"></textarea>
+        </div>
+      </div>
+      <div class="row two">
+        <div>
+          <label for="url">Optional URL</label>
+          <input type="url" id="url" name="url" placeholder="https://example.com/article" />
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+          <button type="submit" id="go">Run pipeline</button>
+        </div>
+      </div>
+    </form>
+    <p class="sub" style="margin-top:0.5rem;">
+      If both are filled, <strong>text takes priority</strong>. URL is fetched server-side (HTML pages only; best-effort extraction).
+    </p>
+    <div id="err" class="err"></div>
+
+    <section id="results">
+      <div class="card" style="margin-bottom:1rem;">
+        <h2>Final threat (ensemble)</h2>
+        <p id="final-threat"></p>
+        <h2 style="margin-top:1rem;">Per-model predictions</h2>
+        <ul class="models" id="models"></ul>
+      </div>
+      <div class="grid charts">
+        <div class="card">
+          <h2>Emotion lexicon matches</h2>
+          <canvas id="chartEmo" height="220"></canvas>
+        </div>
+        <div class="card">
+          <h2>Sentiment (VADER)</h2>
+          <canvas id="chartSent" height="220"></canvas>
+          <p id="sent-label" style="margin:0.5rem 0 0; font-size:0.9rem;"></p>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1rem;">
+        <h2>Input preview</h2>
+        <pre class="preview" id="preview"></pre>
+      </div>
+    </section>
+  </main>
+  <script>
+    let chartEmo, chartSent;
+    function threatClass(name) {
+      if (name.includes("High")) return "high";
+      if (name.includes("Potential")) return "potential";
+      return "no";
+    }
+    function pill(html, name) {
+      const c = threatClass(name);
+      return '<span class="threat-pill ' + c + '">' + html + "</span>";
+    }
+    document.getElementById("f").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const err = document.getElementById("err");
+      const go = document.getElementById("go");
+      err.classList.remove("show");
+      err.textContent = "";
+      go.disabled = true;
+      const text = document.getElementById("text").value.trim();
+      const url = document.getElementById("url").value.trim();
+      try {
+        const res = await fetch("/api/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, url }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          err.textContent = data.error || "Request failed";
+          err.classList.add("show");
+          return;
+        }
+        document.getElementById("results").classList.add("show");
+        document.getElementById("final-threat").innerHTML = pill(data.threat_final, data.threat_final);
+        const ul = document.getElementById("models");
+        ul.innerHTML = "";
+        const labels = { decision_tree: "Decision Tree", naive_bayes: "Naive Bayes", svm: "SVM" };
+        for (const k of Object.keys(labels)) {
+          const li = document.createElement("li");
+          li.innerHTML = "<span>" + labels[k] + "</span><span>" + pill(data.models[k], data.models[k]) + "</span>";
+          ul.appendChild(li);
+        }
+        document.getElementById("preview").textContent = data.user_text_preview || "";
+        document.getElementById("sent-label").textContent =
+          "Label: " + data.sentiment.label + " · compound " + data.sentiment.compound;
+
+        const emoLabels = Object.keys(data.emotions);
+        const emoVals = emoLabels.map((k) => data.emotions[k]);
+        const ctxE = document.getElementById("chartEmo");
+        if (chartEmo) chartEmo.destroy();
+        chartEmo = new Chart(ctxE, {
+          type: "bar",
+          data: {
+            labels: emoLabels,
+            datasets: [{
+              label: "Matches",
+              data: emoVals,
+              backgroundColor: "rgba(61, 139, 253, 0.6)",
+              borderColor: "rgba(61, 139, 253, 1)",
+              borderWidth: 1,
+            }],
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { stepSize: 1, color: "#8b9bb4" } },
+              x: { ticks: { color: "#8b9bb4" } },
+            },
+          },
+        });
+
+        const ctxS = document.getElementById("chartSent");
+        if (chartSent) chartSent.destroy();
+        chartSent = new Chart(ctxS, {
+          type: "doughnut",
+          data: {
+            labels: ["Positive", "Neutral", "Negative"],
+            datasets: [{
+              data: [
+                data.sentiment.positive,
+                data.sentiment.neutral,
+                data.sentiment.negative,
+              ],
+              backgroundColor: [
+                "rgba(46, 204, 113, 0.75)",
+                "rgba(139, 155, 180, 0.6)",
+                "rgba(231, 76, 60, 0.75)",
+              ],
+            }],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: "bottom", labels: { color: "#e7ecf3" } },
+            },
+          },
+        });
+      } catch (x) {
+        err.textContent = String(x);
+        err.classList.add("show");
+      } finally {
+        go.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

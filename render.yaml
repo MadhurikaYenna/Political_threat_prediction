@@ -1,0 +1,9 @@
+# Optional: Render Blueprint — New → Blueprint → connect repo with this file.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: political-threat-prediction
+    env: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    healthCheckPath: /

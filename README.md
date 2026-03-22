@@ -55,6 +55,23 @@ Use `http://127.0.0.1:5173`. On first run, models train automatically if `models
 
 If `frontend/dist/` does not exist, `/` falls back to the older `templates/index.html` page.
 
+## Deploy on Render (Docker)
+
+The repo includes a `Dockerfile` that builds the React app, installs NLTK data, trains models, and runs **Gunicorn**.
+
+1. Push this repo to GitHub/GitLab/Bitbucket.
+2. In [Render](https://render.com): **New +** → **Web Service** → connect the repository.
+3. Set:
+   - **Runtime:** **Docker**
+   - **Dockerfile path:** `Dockerfile`
+   - **Instance type:** your plan (Docker web services need a paid instance on many accounts—pick what Render offers).
+4. Leave **Build Command** / **Start Command** empty (Docker `CMD` handles start). Render injects **`PORT`** automatically.
+5. **Create Web Service**. First deploy builds the image (several minutes).
+
+Optional: **New** → **Blueprint** → select the repo and use `render.yaml`.
+
+Local check: `docker build -t pstp .` then `docker run -p 8080:8080 -e PORT=8080 pstp` → open `http://localhost:8080`.
+
 ## Data
 
 Replace or extend `data/labeled_examples.csv` (columns `text`, `threat_label` with integers `0` = no, `1` = potential, `2` = high), then run `python run_pipeline.py` again.
